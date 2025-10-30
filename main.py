@@ -1,11 +1,43 @@
 from fastapi import FastAPI
-import uvicorn
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
 
+# Load the database URL from environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Set up SQLAlchemy
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+# Define the User model
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+
+# Create the users table if it doesn't exist
+Base.metadata.create_all(bind=engine)
+
+# Initialize FastAPI
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, Ahsan! Your app is working."}
+# Define the request schema
+class UserCreate(BaseModel):
+    username: str
+    password: str
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+# Define the endpoint to add a user
+@app.post("/add-user/")
+def add_user(user: UserCreate):
+    db = SessionLocal()
+    db_user = User(username=user.username, password=user.password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    db.close()
+    return {"message": f"User {user.username} added successfully"}
