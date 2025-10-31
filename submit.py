@@ -26,6 +26,13 @@ else:
 response = requests.post(BASE_URL + endpoint, json=data)
 
 if response.status_code == 200:
-    print("✅ Success:", response.json()["message"])
+    try:
+        print("✅ Success:", response.json()["message"])
+    except ValueError:
+        print("✅ Success, but no message returned.")
 else:
-    print("❌ Error:", response.json().get("detail", "Unknown error"))
+    try:
+        error = response.json().get("detail", "Unknown error")
+    except ValueError:
+        error = response.text  # fallback if not JSON
+    print("❌ Error:", error)
