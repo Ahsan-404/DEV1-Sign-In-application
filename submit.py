@@ -1,5 +1,7 @@
 import requests
 
+# redeploy
+
 BASE_URL = "https://fastapi-app-cr0h.onrender.com"
 
 print("Welcome! Choose an option:")
