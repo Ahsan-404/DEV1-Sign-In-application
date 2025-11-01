@@ -2,13 +2,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
-from dotenv import load_dotenv
 import os
 
 # redeploy
+# redeploy
 
 # Load .env file
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Set up SQLAlchemy
