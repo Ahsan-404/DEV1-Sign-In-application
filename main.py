@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
+import bcrypt
 import os
 
 # redeploy
@@ -40,24 +41,37 @@ class UserLogin(BaseModel):
 # Sign-up endpoint
 @app.post("/add-user/")
 def add_user(user: UserCreate):
-    db = SessionLocal()
-    existing_user = db.query(User).filter(User.username == user.username).first()
-    if existing_user:
-        db.close()
-        raise HTTPException(status_code=400, detail="Username already exists")
-    db_user = User(username=user.username, password=user.password)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    db.close()
-    return {"message": f"User {user.username} added successfully"}
+    with SessionLocal() as db:
+        # Check if username already exists
+        existing_user = db.query(User).filter(User.username == user.username).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # Hash the password before storing
+        hashed_pw = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
+        
+        # Create new user
+        db_user = User(username=user.username, password=hashed_pw.decode('utf-8'))
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        return {"message": f"User {user.username} added successfully"}
 
 # Login endpoint
 @app.post("/login/")
 def login(user: UserLogin):
-    db = SessionLocal()
-    db_user = db.query(User).filter(User.username == user.username).first()
-    db.close()
-    if not db_user or db_user.password != user.password:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"message": f"Welcome back, {user.username}!"}
+    with SessionLocal() as db:
+        # Find the user in the database
+        db_user = db.query(User).filter(User.username == user.username).first()
+        if not db_user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Assign stored hashed password to a variable for readability
+        hashed_pw = db_user.password
+        
+        # Verify password using bcrypt
+        if not bcrypt.checkpw(user.password.encode('utf-8'), hashed_pw.encode('utf-8')):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        return {"message": f"Welcome back, {user.username}!"}
