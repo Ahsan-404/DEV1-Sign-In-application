@@ -76,6 +76,6 @@ def login(user: UserLogin):
         
         return {"message": f"Welcome back, {user.username}!"}
 
-@app.post("/ping/")
+@app.get("/ping/")
 def ping():
     return {"status" : "alive"}
