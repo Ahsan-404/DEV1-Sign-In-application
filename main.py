@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
+import threading
 import bcrypt
 import os
 
@@ -79,3 +80,16 @@ def login(user: UserLogin):
 @app.get("/ping/")
 def ping():
     return {"status" : "alive"}
+
+import threading, time, requests, os
+
+def keep_alive():
+    while True:
+        try:
+            # replace with your actual Render URL
+            requests.get("https://fastapi-app-cr0h.onrender.com/ping/")
+        except Exception:
+            pass
+        time.sleep(300)  # every 5 minutes
+
+threading.Thread(target=keep_alive, daemon=True).start()
