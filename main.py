@@ -75,3 +75,7 @@ def login(user: UserLogin):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
         return {"message": f"Welcome back, {user.username}!"}
+
+@app.post("/ping/")
+def ping():
+    return {"status" : "alive"}
