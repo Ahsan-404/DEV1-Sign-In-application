@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+import jwt
 import requests
 import time
 import threading
@@ -14,6 +15,22 @@ import os
 
 # Load .env file
 DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
+
+def create_access_token(username: str):
+    payload = {"sub": username, "iat": datetime.utcnow()}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token_and_get_username(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Set up SQLAlchemy
 engine = create_engine(DATABASE_URL)
@@ -50,7 +67,7 @@ class UserLogin(BaseModel):
     password: str
 
 class MessageCreate(BaseModel):
-    username: str
+    token: str
     content: str
 
 # Sign-up endpoint
@@ -71,7 +88,8 @@ def add_user(user: UserCreate):
         db.commit()
         db.refresh(db_user)
         
-        return {"message": f"User {user.username} added successfully"}
+        token = create_access_token(db_user.username)
+        return {"message": f"User {user.username} added successfully", "access_token" : token}
 
 # Login endpoint
 @app.post("/login/")
@@ -89,7 +107,8 @@ def login(user: UserLogin):
         if not bcrypt.checkpw(user.password.encode('utf-8'), hashed_pw.encode('utf-8')):
             raise HTTPException(status_code=401, detail="Invalid credentials")
         
-        return {"message": f"Welcome back, {user.username}!"}
+        token = create_access_token(db_user.username)
+        return {"message": f"Welcome back, {user.username}!", "access_token" : token}
 
 @app.get("/ping/")
 def ping():
@@ -97,9 +116,11 @@ def ping():
 
 @app.post("/chat/")
 def send_message(msg: MessageCreate):
+    username = verify_token_and_get_username(msg.token)
+
     with SessionLocal() as db:
         db_msg = Message(
-            username = msg.username,
+            username = username,
             content = msg.content,
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         )
@@ -116,7 +137,7 @@ def send_message(msg: MessageCreate):
                 .all()
             )
 
-            old_ids = [row.ids for row in old_ids]
+            old_ids = [row.id for row in old_ids]
             if old_ids:
                 db.query(Message).filter(Message.id.in_(old_ids)).delete(synchronize_session=False)
                 db.commit()

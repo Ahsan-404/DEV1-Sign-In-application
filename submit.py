@@ -39,3 +39,38 @@ else:
     except ValueError:
         error = response.text  # fallback if not JSON
     print("❌ Error:", error)
+    exit()
+
+# Extract access token
+token = response.json().get("access_token")
+print("✅ Success:", response.json()["message"])
+print("🔑 Your access token:", token)
+
+# --- Chat Loop ---
+print("\nYou can now send messages. Type 'exit' to quit.")
+
+while True:
+    msg_content = input("Message: ")
+    if msg_content.lower() == "exit":
+        break
+
+    # Send message
+    msg_data = {"token": token, "content": msg_content}
+    resp = requests.post(BASE_URL + "/chat/", json=msg_data)
+    
+    if resp.status_code == 200:
+        print("✅ Message sent!")
+    else:
+        try:
+            error = resp.json().get("detail", "Unknown error")
+        except ValueError:
+            error = resp.text
+        print("❌ Error:", error)
+    
+    # Fetch latest 50 messages
+    resp = requests.get(BASE_URL + "/chat/")
+    if resp.status_code == 200:
+        for m in resp.json():
+            print(f"[{m['timestamp']}] {m['username']}: {m['content']}")
+    else:
+        print("❌ Could not fetch messages")
