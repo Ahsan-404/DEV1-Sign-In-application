@@ -101,11 +101,26 @@ def send_message(msg: MessageCreate):
         db_msg = Message(
             username = msg.username,
             content = msg.content,
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         )
         db.add(db_msg)
         db.commit()
         db.refresh(db_msg)
+
+        total = db.query(Message).count()
+        if total > 50:
+            old_ids = (
+                db.query(Message.id)
+                .order_by(Message.id.desc())
+                .offset(50)
+                .all()
+            )
+
+            old_ids = [row.ids for row in old_ids]
+            if old_ids:
+                db.query(Message).filter(Message.id.in_(old_ids)).delete(synchronize_session=False)
+                db.commit()
+
         return {"message": "Message sent!", "id": db_msg.id}
 
 @app.get("/chat/")
@@ -116,12 +131,6 @@ def get_messages():
         # Reverse to show oldest first
         messages.reverse()
 
-        # Print them to terminal / Render logs
-        print("\n==== Latest 50 Messages ====")
-        for m in messages:
-            print(f"[{m.timestamp}] {m.username}: {m.content}")
-        print("============================\n")
-
         # Return them to API callers too
         return [
             {"username": m.username, "content": m.content, "timestamp": m.timestamp}
@@ -131,7 +140,6 @@ def get_messages():
 def keep_alive():
     while True:
         try:
-            # replace with your actual Render URL
             requests.get("https://fastapi-app-cr0h.onrender.com/ping/")
         except Exception:
             pass

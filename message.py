@@ -7,7 +7,11 @@ username = input("Username: ")
 msg = input("Message: ")
 
 resp = requests.post(BASE_URL + "/chat/", json={"username": username, "content": msg})
-print(resp.json())
+try:
+    print(resp.json())
+except ValueError:
+    print("❌ Non-JSON response from server:")
+    print(resp.status_code, resp.text)
 
 # Get all messages
 resp = requests.get(BASE_URL + "/chat/")
