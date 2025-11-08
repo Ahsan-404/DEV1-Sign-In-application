@@ -1,4 +1,8 @@
 import requests
+import os
+import time
+
+os.system("cls" if os.name == "nt" else "clear")
 
 # redeployed
 # redeploy
@@ -43,14 +47,16 @@ else:
 
 # Extract access token
 token = response.json().get("access_token")
-print("✅ Success:", response.json()["message"])
-print("🔑 Your access token:", token)
 
 # --- Chat Loop ---
 print("\nYou can now send messages. Type 'exit' to quit.")
 
+time.sleep(2)
+os.system("cls" if os.name == "nt" else "clear")
+
 while True:
     msg_content = input("Message: ")
+    os.system("cls" if os.name == "nt" else "clear")
     if msg_content.lower() == "exit":
         break
 
